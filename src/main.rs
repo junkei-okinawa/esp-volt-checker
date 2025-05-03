@@ -24,10 +24,22 @@ fn main() -> anyhow::Result<()> {
     };
     let mut adc2_ch1 = AdcChannelDriver::new(&adc2, peripherals.pins.gpio0, &config)?;
 
+    const MIN_MV: f32 = 128.0;
+    const MAX_MV: f32 = 3130.0;
+    const RANGE_MV: f32 = MAX_MV - MIN_MV;
+
     loop {
         // you can change the sleep duration depending on how often you want to sample
         FreeRtos::delay_ms(100);
-        let voltage_mv = adc2_ch1.read()?;
-        info!("Voltage: {} mV", voltage_mv);
+        let voltage_mv = adc2_ch1.read()? as f32; // Cast to f32 for calculation
+
+        // Calculate percentage within the observed range [MIN_MV, MAX_MV]
+        let percentage = if RANGE_MV <= 0.0 {
+            0.0 // Avoid division by zero or negative range
+        } else {
+            ((voltage_mv - MIN_MV) / RANGE_MV * 100.0).max(0.0).min(100.0) // Clamp between 0 and 100
+        };
+
+        info!("Voltage: {:.0} mV ({:.1}%)", voltage_mv, percentage);
     }
 }
